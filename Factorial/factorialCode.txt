@@ -1,0 +1,21 @@
+main()
+{
+    n = scan();
+    
+    n = fac(n);
+    
+    print(n);
+    
+    return ;
+}
+fac(n)
+{    
+    if (n rr 0)
+    {
+        return 1;
+    }
+    else
+    {
+        return fac(n-1) * n;
+    }
+}

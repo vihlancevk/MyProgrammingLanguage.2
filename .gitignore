@@ -1,0 +1,12 @@
+copy.txt
+asmTests/
+res/graphiz.gv
+res/graphiz.png
+src/log
+main.o
+FileOperations.o
+Tokenizer.o
+Parser.o
+Tree.o
+GenerateAsmCode.o
+generateAsmCode

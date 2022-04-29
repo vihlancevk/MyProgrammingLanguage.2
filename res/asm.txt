@@ -1,0 +1,171 @@
+extern scanf
+extern printf
+extern pow
+extern sqrt
+
+
+section .data
+
+
+BUFFER: times 100 dq 0
+PRINT: db "%d", 10, 0
+SCAN:  db "%d"
+
+
+section .text
+
+
+global main
+
+
+main:
+
+
+	mov rsi, BUFFER
+	xor r14, r14
+	xor r15, r15
+
+
+	sub rsp, 24
+	mov qword [rsp + 8], 0
+	lea rsi, [rsp + 8]
+	mov rdi, SCAN
+	mov rax, 0
+	call scanf
+	mov rsi, BUFFER
+	mov rax, qword [rsp + 8] 
+	add rsp, 24
+	push rax
+
+
+	inc r15
+
+
+	pop rax
+	mov [rsi + (r14 + 0 + 0) * 8], rax
+
+
+	push r14
+	push r15
+
+
+	mov rax, [rsi + (r14 + 0 + 0) * 8]
+	push rax
+
+
+	add r14, r15
+	call fac
+	pop r15
+	pop r14
+	push rax
+
+
+	pop rax
+	mov [rsi + (r14 + 0 + 0) * 8], rax
+
+
+	mov rdi, PRINT
+
+
+	mov rax, [rsi + (r14 + 0 + 0) * 8]
+	push rax
+
+
+	pop rax
+	mov rsi, rax
+	mov rax, 0
+	call printf
+	mov rsi, BUFFER
+
+
+	ret
+
+
+fac:
+
+
+	pop rcx
+	xor r15, r15
+
+
+	pop rax
+
+
+	inc r15
+
+
+	mov [rsi + (r14 + 0 + 0) * 8], rax
+
+
+	push rcx
+
+
+	mov rax, [rsi + (r14 + 0 + 0) * 8]
+	push rax
+
+
+	mov rax, 0
+	push rax
+
+
+	pop rbx
+	pop rax
+	cmp rax, rbx
+	je .next0
+
+
+	push r14
+	push r15
+
+
+	mov rax, [rsi + (r14 + 0 + 0) * 8]
+	push rax
+
+
+	mov rax, 1
+	push rax
+
+
+	pop rbx
+	pop rax
+	sub rax, rbx
+	push rax
+
+
+	add r14, r15
+	call fac
+	pop r15
+	pop r14
+	push rax
+
+
+	mov rax, [rsi + (r14 + 0 + 0) * 8]
+	push rax
+
+
+	pop rbx
+	pop rax
+	mul ebx
+	push rax
+
+
+	pop rax
+	ret
+
+
+	jmp .next1
+
+
+.next0:
+
+
+	mov rax, 1
+	push rax
+
+
+	pop rax
+	ret
+
+
+.next1:
+
