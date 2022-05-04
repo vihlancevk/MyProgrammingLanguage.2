@@ -1,21 +1,8 @@
 main()
 {
-    n = scan();
+    a = 2;
     
-    n = fac(n);
-    
-    print(n);
+    D = a * a; // такая конструкция не работает !!!
     
     return 0;
-}
-fac(n)
-{    
-    if (n rr 0)
-    {
-        return 1;
-    }
-    else
-    {
-        return fac(n-1) * n;
-    }
 }

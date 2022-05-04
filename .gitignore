@@ -10,3 +10,6 @@ Parser.o
 Tree.o
 GenerateAsmCode.o
 generateAsmCode
+README.md
+cmpFileTxt/
+note.txt

@@ -17,18 +17,18 @@ main()
         if (x1 rr (0 - 1))
         {
             print(0 - 1);
-            return ;
+            return 0;
         }
         
         if (x1 rr 0)
         {
             print(0);
-            return ;
+            return 0;
         }
         
         print(1);
         print(x1);
-        return ;
+        return 0;
     }
     
     d = b*b - 4*a*c;
@@ -36,7 +36,7 @@ main()
     if (d < 0)
     {
         print(0);
-        return ;
+        return 0;
     }
     
     if (d rr 0)
@@ -45,7 +45,7 @@ main()
         
         print(1);
         print(x1);
-        return ;
+        return 0;
     }
     
     if (d > 0)
@@ -57,10 +57,10 @@ main()
         print(2);
         print(x1);
         print(x2);
-        return ;
+        return 0;
     }
     
-    return ;
+    return 0;
 }
 
 f(a, b)
