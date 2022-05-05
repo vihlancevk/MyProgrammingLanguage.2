@@ -13,6 +13,7 @@ struct Name
 {
     char str[STR_MAX_SIZE];
     int curOffset;
+    int32_t addressCall;
 };
 
 struct TableLocalNames

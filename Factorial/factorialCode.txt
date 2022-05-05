@@ -6,7 +6,7 @@ main()
     
     print(n);
     
-    return ;
+    return 0;
 }
 fac(n)
 {    
