@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include "../include/GenerateAsmCode.h"
+#include "../include/DSL.h"
 
 const char     *NAME_OUTPUT_FILE          = "./res/prog";
 const u_int32_t START_POSITION_IN_FILE    = 4448;
@@ -15,9 +16,9 @@ const int32_t   NO_FUNCTION_IN_TABLE_NAME = -1;
 TableGlobalNames globalNames = { {}, 0 };
 TableFunctions   functions   = {};
 
-u_int32_t curLabel          = 0;
-u_int32_t numBytesInFile    = 0;
-u_int32_t numTreeTraversals = 2;
+u_int32_t curLabel       = 0;
+u_int32_t numBytesInFile = 0;
+u_int32_t numTreeCrawl   = 0;
 
 int32_t labelsAddress[100] = {};
 
@@ -32,8 +33,8 @@ static int NodeVisitorForSearchMain( Node_t *node )
 
     if ( node->nodeType == MAIN ) { return 1; }
 
-    if ( node->leftChild  != nullptr ) { if ( NodeVisitorForSearchMain( node->leftChild  )) { return 1; } }
-    if ( node->rightChild != nullptr ) { if ( NodeVisitorForSearchMain( node->rightChild )) { return 1; } }
+    if ( node->leftChild  != nullptr ) { if ( NodeVisitorForSearchMain( node->leftChild  ) ) { return 1; } }
+    if ( node->rightChild != nullptr ) { if ( NodeVisitorForSearchMain( node->rightChild ) ) { return 1; } }
 
     return 0;
 }
@@ -283,14 +284,10 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
         if ( functions.curName < NUMBERS_FUNCTION )
         {
             u_int32_t curFunCall = CheckTableFunctions( node->leftChild->leftChild );
-            if ( numTreeTraversals == 2 ) { functions.functions[curFunCall].addressCall += numBytesInFile; }
+            if ( numTreeCrawl == 1 ) { functions.functions[curFunCall].addressCall += numBytesInFile; }
             u_int8_t bufNumOpers1[4] = { 0x59, 0x4d, 0x31, 0xff };
             fwrite( bufNumOpers1, sizeof( u_int8_t ), 4, code );
             numBytesInFile += 4;
-
-            // fprintf( code, "\n%s:\n\n"
-            //                "\n\tpop rcx\n"
-            //                  "\txor r15, r15\n\n", node->leftChild->leftChild->str + 1 );
 
             if ( node->leftChild->rightChild != nullptr )
             {
@@ -299,9 +296,6 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
                     u_int8_t bufNumOpers2[2] = { 0x58, 0x5b };
                     fwrite( bufNumOpers2, sizeof( u_int8_t ), 2, code );
                     numBytesInFile += 2;
-
-                    // fprintf( code, "\n\tpop rax\n"
-                    //                  "\tpop rbx\n\n" );
 
                     Node_t *node1 = node->leftChild->rightChild;
 
@@ -314,9 +308,6 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
                     fwrite( &curOffsetInMemory, sizeof( int32_t ), 1, code );
                     numBytesInFile += 4;
 
-                    // fprintf( code, "\n\tmov [rsi + (r14 + %d + %d) * 8], rbx\n\n",
-                    //               globalNames.curName, CheckTableLocalNames( node1->rightChild, code, &newLocalNames ) );
-                    
                     while ( node1->leftChild != nullptr )
                     {
                         node1 = node1->leftChild;
@@ -329,10 +320,6 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
 
                         fwrite( &curOffsetInMemory, sizeof( int32_t ), 1, code );
                         numBytesInFile += 4;
-
-                        // fprintf( code, "\n\tmov [rsi + (r14 + %d + %d) * 8], rax\n\n",
-                        //                 globalNames.curName, CheckTableLocalNames( node1->rightChild, code, &newLocalNames ) );
-                        //! ToDo other register (extensibility)
                     }
                 }
                 else
@@ -340,8 +327,6 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
                     u_int8_t bufNumOper = 0x58;
                     fwrite( &bufNumOper, sizeof( u_int8_t ), 1, code );
                     numBytesInFile += 1;
-
-                    // fprintf( code, "\n\tpop rax\n\n" );
 
                     Node_t *node1 = node->leftChild->rightChild;
                     
@@ -353,17 +338,12 @@ static void ConvertDefineNodeInCode( Node_t *node, FILE *code, TableLocalNames *
 
                     fwrite( &curOffsetInMemory, sizeof( int32_t ), 1, code );
                     numBytesInFile += 4;
-
-                    // fprintf( code, "\n\tmov [rsi + (r14 + %d + %d) * 8], rax\n\n",
-                    //               globalNames.curName, CheckTableLocalNames( node1->rightChild, code, &newLocalNames ) );
                 }
             }
 
             u_int8_t bufNumOper = 0x51;
             fwrite( &bufNumOper, sizeof( u_int8_t ), 1, code );
             numBytesInFile += 1;
-
-            // fprintf( code, "\n\tpush rcx\n\n" );
 
             ConvertSubtreeInCode( node->rightChild, code, &newLocalNames );
         }
@@ -469,9 +449,6 @@ static void ConvertCallNodeInCode( Node_t *node, FILE *code, TableLocalNames *lo
             fwrite( bufNumOpers1, sizeof( u_int8_t ), 4, code );
             numBytesInFile += 4;
 
-            // fprintf(code, "\n\tpush r14\n"
-            //                 "\tpush r15\n\n");
-
             if (node->rightChild != nullptr)
             {
 
@@ -496,13 +473,6 @@ static void ConvertCallNodeInCode( Node_t *node, FILE *code, TableLocalNames *lo
             u_int32_t curFunCall = CheckTableFunctions( node->leftChild );
             int32_t addressCall  = functions.functions[curFunCall].addressCall - numBytesInFile;
             fwrite( &addressCall, sizeof( int32_t ), 1, code );
-
-            // node->leftChild->str[strlen(node->leftChild->str) - 1] = '\0';
-            // fprintf( code, "\n\tadd r14, r15\n"
-            //                 "\tcall %s\n"
-            //                 "\tpop r15\n"
-            //                 "\tpop r14\n"
-            //                 "\tpush rax\n\n", node->leftChild->str + 1 );
 
             u_int8_t bufNumOpers3[5] = { 0x41, 0x5f, 0x41, 0x5e, 0x50 };
             fwrite( bufNumOpers3, sizeof( u_int8_t ), 5, code );
@@ -536,15 +506,15 @@ static void ConvertIfNodeInCode( Node_t *node, FILE *code, TableLocalNames *loca
 
     numBytesInFile += 4;
     u_int32_t numLabel = label;
-    if ( numTreeTraversals == 2 ) { labelsAddress[numLabel] -= numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[numLabel] -= numBytesInFile; }
     int32_t addressJmp = labelsAddress[numLabel];
     fwrite( &addressJmp, sizeof( int32_t ), 1, code );
 
-    if ( numTreeTraversals == 2 ) { labelsAddress[label - 1] += numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[label - 1] += numBytesInFile; }
     
     ConvertSubtreeInCode( node->rightChild->leftChild, code, localNames );
     
-    if ( numTreeTraversals == 2 ) { labelsAddress[label] += numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[label] += numBytesInFile; }
 }
 
 static void ConvertWhileNodeInCode( Node_t *node, FILE *code, TableLocalNames *localNames )
@@ -555,7 +525,7 @@ static void ConvertWhileNodeInCode( Node_t *node, FILE *code, TableLocalNames *l
 
     int32_t label = GenerateLabel();
 
-    if ( numTreeTraversals == 2 ) { labelsAddress[label] += numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[label] += numBytesInFile; }
     
     ConvertSubtreeInCode( node->leftChild, code, localNames );
     
@@ -567,11 +537,11 @@ static void ConvertWhileNodeInCode( Node_t *node, FILE *code, TableLocalNames *l
 
     numBytesInFile += 4;
     u_int32_t numLabel = label;
-    if ( numTreeTraversals == 2 ) { labelsAddress[numLabel] -= numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[numLabel] -= numBytesInFile; }
     int32_t addressJmp = labelsAddress[numLabel];
     fwrite( &addressJmp, sizeof( int32_t ), 1, code );
     
-    if ( numTreeTraversals == 2 ) { labelsAddress[label - 1] += numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[label - 1] += numBytesInFile; }
     
     ConvertSubtreeInCode( node->rightChild, code, localNames );
     
@@ -580,11 +550,11 @@ static void ConvertWhileNodeInCode( Node_t *node, FILE *code, TableLocalNames *l
 
     numBytesInFile += 4;
     numLabel = label;
-    if ( numTreeTraversals == 2 ) { labelsAddress[numLabel - 2] -= numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[numLabel - 2] -= numBytesInFile; }
     addressJmp = labelsAddress[numLabel - 2];
     fwrite( &addressJmp, sizeof( int32_t ), 1, code );
     
-    if ( numTreeTraversals == 2 ) { labelsAddress[label] += numBytesInFile; }
+    if ( numTreeCrawl == 1 ) { labelsAddress[label] += numBytesInFile; }
 }
 
 static void ConvertAssignNodeInCode( Node_t *node, FILE *code, TableLocalNames *localNames )
@@ -688,145 +658,21 @@ static void ConvertBinaryOperationNodeInCode( Node_t *node, FILE *code, TableLoc
 
     ConvertSubtreeInCode( node->leftChild , code, localNames );
     ConvertSubtreeInCode( node->rightChild, code, localNames );
+
     switch ( (int32_t)node->nodeType )
     {
-        case (int32_t)ADD:
-        {
-            u_int8_t bufNumOpers[6] = { 0x5b, 0x58, 0x48, 0x01, 0xd8, 0x50 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 6, code );
-            numBytesInFile += 6;
-
-            break;
-        }
-        case (int32_t)SUB:
-        {
-            u_int8_t bufNumOpers[6] = { 0x5b, 0x58, 0x48, 0x29, 0xd8, 0x50 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 6, code );
-            numBytesInFile += 6;
-
-            break;
-        }
-        case (int32_t)MUL:
-        {
-            u_int8_t bufNumOpers[5] = { 0x5b, 0x58, 0xf7, 0xe3, 0x50 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 5, code );
-            numBytesInFile += 5;
-            break;
-        }
-        case (int32_t)DIV:
-        {
-            u_int8_t bufNumOpers[6] = { 0x5b, 0x58, 0x99, 0xf7, 0xfb, 0x50 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 6, code );
-            numBytesInFile += 6;
-
-            break;
-        }
-        case (int32_t)POW:
-        {
-            u_int8_t bufNumOpers1[11] = { 0x5b, 0x58, 0xf2, 0x0f, 0x2a, 0xc0, 0xf2, 0x0f, 0x2a, 0xcb, 0xe8 };
-            fwrite( bufNumOpers1, sizeof( u_int8_t ), 11, code );
-            numBytesInFile += 11;
-
-            u_int16_t curAddressPow = START_ADDRESS_POW - numBytesInFile;
-            fwrite( &curAddressPow, sizeof( u_int16_t ), 1, code );
-            numBytesInFile += 2;
-
-            u_int8_t bufNumOpers2[17] = { 0xff, 0xff, 0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf2, 0x0f, 0x2c, 0xc0,
-                                         0x50 };
-            fwrite( bufNumOpers2, sizeof( u_int8_t ), 17, code );
-            numBytesInFile += 17;
-
-            break;
-        }
-        case (int32_t)JA:
-        {
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x8f };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        case (int32_t)JB:
-        {
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x8c };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        case (int32_t)JE:
-        { 
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x84 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        case (int32_t)JAE:
-        {
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x8d };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        case (int32_t)JBE:
-        {
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x8e };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        case (int32_t)JNE:
-        {
-            u_int8_t bufNumOpers[7] = { 0x5b, 0x58, 0x48, 0x39, 0xd8, 0x0f, 0x85 };
-            fwrite( bufNumOpers, sizeof( u_int8_t ), 7, code );
-            numBytesInFile += 7;
-
-            numBytesInFile += 4;
-            u_int32_t numLabel = GenerateLabel();
-            if (numTreeTraversals == 2) { labelsAddress[numLabel] -= numBytesInFile; }    
-            int32_t addressJmp = labelsAddress[numLabel];
-            fwrite( &addressJmp, sizeof( int32_t ), 1, code );
-
-            break;
-        }
-        default:
-        {
-            printf( "Invalid binary operations!\n" );
-            break;
-        }
+        case (int32_t)ADD: { ADD    ( 0x01 ); }
+        case (int32_t)SUB: { SUB    ( 0x29 ); }
+        case (int32_t)MUL: { MUL    (      ); }
+        case (int32_t)DIV: { DIV    (      ); }
+        case (int32_t)POW: { POW    (      ); }
+        case (int32_t)JA:  { CND_JMP( 0x8f ); }
+        case (int32_t)JB:  { CND_JMP( 0x8c ); }
+        case (int32_t)JE:  { CND_JMP( 0x84 ); }
+        case (int32_t)JAE: { CND_JMP( 0x8d ); }
+        case (int32_t)JBE: { CND_JMP( 0x8e ); }
+        case (int32_t)JNE: { CND_JMP( 0x85 ); }
+        default:           { printf( "Invalid binary operations!\n" ); break; }
     }
 }
 
@@ -868,8 +714,7 @@ void ClearCodeFile( FILE* code )
 {
     assert( code != nullptr );
 
-    if ( fseek ( code, START_POSITION_IN_FILE, SEEK_SET ) )
-    {
+    if ( fseek ( code, START_POSITION_IN_FILE, SEEK_SET ) ) {
         printf( "The pointer to the file position has not been moved!\n" );
         return;
     }
@@ -885,7 +730,7 @@ void GenerateAsmCode( Tree_t *tree )
 {
     assert( tree != nullptr );
 
-    for ( ; numTreeTraversals > 0; numTreeTraversals-- )
+    for ( numTreeCrawl = 1; numTreeCrawl <= 2; numTreeCrawl++ )
     {
         curLabel       = 0;
         numBytesInFile = 0;
@@ -913,15 +758,18 @@ void GenerateAsmCode( Tree_t *tree )
         FillTableFunctions   ( tree->root );
         FindAndPrintGlobalVar( tree, code );
 
+        if ( numTreeCrawl == 2 && globalNames.curName != 0 )
+        {
+            for ( int i = 0; i < functions.curName; i++)
+            {
+                functions.functions[i].addressCall -= 12 * globalNames.curName;
+            }
+        }
+
         TableLocalNames localNames = { {}, 0 };
 
         ConvertSubtreeInCode( tree->root, code, &localNames );
 
         fclose( code );
     }
-
-    // for ( u_int32_t i = 0; i < 3; i++ )
-    // {
-    //     printf("%d\n", labelsAddress[i]);
-    // }
 }
