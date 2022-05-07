@@ -4,7 +4,7 @@
 #include "../include/GenerateAsmCode.h"
 #include "../include/DSL.h"
 
-const char     *NAME_OUTPUT_FILE          = "./res/prog";
+const char     *NAME_OUTPUT_FILE          = "res/prog";
 const u_int32_t START_POSITION_IN_FILE    = 4448;
 const u_int32_t NUMBERS_NOP               = 3344;
 const u_int16_t START_ADDRESS_PRINTF      = 0xfedc;
