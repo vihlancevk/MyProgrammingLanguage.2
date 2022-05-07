@@ -66,11 +66,11 @@ enum NodeType
     MUL       , // 31
     DIV       , // 32
     POW       , // 33
-    JA        , // 34
-    JB        , // 35
+    JG        , // 34
+    JL        , // 35
     JE        , // 36
-    JAE       , // 37
-    JBE       , // 38
+    JGE       , // 37
+    JLE       , // 38
     JNE         // 39
 };
 

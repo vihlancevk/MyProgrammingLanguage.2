@@ -58,11 +58,11 @@ static void NodeViewBuild(const Node_t *node, NodeView *nodeView)
         case (int)MUL      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
         case (int)DIV      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
         case (int)POW      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
-        case (int)JA       : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
-        case (int)JB       : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
+        case (int)JG       : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
+        case (int)JL       : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
         case (int)JE       : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
-        case (int)JAE      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
-        case (int)JBE      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
+        case (int)JGE      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
+        case (int)JLE      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
         case (int)JNE      : { BUILD_NODEVIEW_("diamond"      , "red"    ); }
         default            : { BUILD_NODEVIEW_("rectangle"    , "green"  ); }
     }

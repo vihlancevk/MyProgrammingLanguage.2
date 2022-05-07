@@ -37,11 +37,11 @@ const double NO_VALUE = -1.0;
 
 UnaryOperation unaryOperation[NUMBER_UNARY_OPERATIONS] = {};
 
-BoolOperation boolOperation[NUMBER_BOOL_OPERATIONS] = {{JA , (char*)">" },
-                                                       {JB , (char*)"<" },
+BoolOperation boolOperation[NUMBER_BOOL_OPERATIONS] = {{JG , (char*)">" },
+                                                       {JL , (char*)"<" },
                                                        {JE , (char*)"=="},
-                                                       {JAE, (char*)">="},
-                                                       {JBE, (char*)"<="},
+                                                       {JGE, (char*)">="},
+                                                       {JLE, (char*)"<="},
                                                        {JNE, (char*)"!="}};
 
 static Node_t* NodeCtor(Node_t *thisNode)
