@@ -552,8 +552,9 @@ static void ConvertAssignNodeInCode( Node_t *node, FILE *code, TableLocalNames *
         numBytesInFile += 5;                                      //                       |
                                                                   //                       |
         int32_t regVal = ( globalNames.curName + curOffset ) * 8; //<----------------------| 
-        myFwrite( &regVal, sizeof( int32_t ), 1, code );          // x - number of global variables
-        numBytesInFile += 4;                                      // y - number of local variables
+        myFwrite( &regVal, sizeof( int32_t ), 1, code );          // r14 - counter of local variables in the function 
+        numBytesInFile += 4;                                      // x - number of global variables
+                                                                  // y - number of local variables
     }
     else
     {
@@ -586,8 +587,9 @@ static void ConvertLocVariableNodeIncode(Node_t *node, FILE *code, TableLocalNam
         numBytesInFile += 4;                                      //                            |
                                                                   //                            |
         int32_t regVal = ( globalNames.curName + curOffset ) * 8; //<---------------------------|
-        myFwrite( &regVal, sizeof( int32_t ), 1, code );          // x - number of global variables
-        numBytesInFile += 4;                                      // y - number of local variables
+        myFwrite( &regVal, sizeof( int32_t ), 1, code );          // r14 - counter of local variables in the function
+        numBytesInFile += 4;                                      // x - number of global variables
+                                                                  // y - number of local variables
         
         u_int8_t bufNumOper = 0x50;                               // push rax
         myFwrite( &bufNumOper, sizeof( u_int8_t ), 1, code );
@@ -702,7 +704,7 @@ static void ConvertBinaryOperationNodeInCode( Node_t *node, FILE *code, TableLoc
                                           0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rsi, BUFFER
                                           0xf2, 0x0f, 0x2c, 0xc0,                                     // cvttsd2si eax, xmm0
                                           0x50 };                                                     // push rax                                 
-            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 17, code );                                                                        
+            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 17, code );                               
             numBytesInFile += 17;                                                                                                         
             break;
         }
