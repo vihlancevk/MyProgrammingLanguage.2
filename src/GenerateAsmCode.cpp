@@ -5,12 +5,17 @@
 #include "../include/DSL.h"
 
 const char     *NAME_OUTPUT_FILE          = "res/prog";
+const char     *NAME_RESIZE_FILE          = "asmTests/prog.asm";
 const u_int32_t START_POSITION_IN_FILE    = 4448;
-const u_int32_t NUMBERS_NOP               = 3344;
-const u_int16_t START_ADDRESS_PRINTF      = 0xfedc;
-const u_int16_t START_ADDRESS_SCANF       = 0xfeec;
-const u_int16_t START_ADDRESS_POW         = 0xfecc;
-const u_int16_t START_ADDRESS_SQRT        = 0xfefc;
+      u_int32_t NUMBERS_NOP               = 3344;
+const u_int32_t NUMBERS_NOP_FOR_RESIZE_IP = 1000;
+      u_int64_t ADDRESS_DATA_BUFFER       = 0x404048;
+      u_int64_t ADDRESS_DATA_PRINTF       = 0x404368;
+      u_int64_t ADDRESS_DATA_SCANF        = 0x40436c;
+const u_int16_t START_ADDRESS_FUNC_PRINTF = 0xfedc;
+const u_int16_t START_ADDRESS_FUNC_SCANF  = 0xfeec;
+const u_int16_t START_ADDRESS_FUNC_POW    = 0xfecc;
+const u_int16_t START_ADDRESS_FUNC_SQRT   = 0xfefc;
 const int32_t   NO_VARIABLE_IN_TABLE_NAME = -1;
 const int32_t   NO_FUNCTION_IN_TABLE_NAME = -1;
 
@@ -344,33 +349,48 @@ static void ConvertCallNodeInCode( Node_t *node, FILE *code, TableLocalNames *lo
     {
         if ( node->leftChild->nodeType == SCAN )
         {
-            u_int8_t bufNumOpers1[34] = { 0x48, 0x83, 0xec, 0x18,                                     // sub rsp, 24
-                                          0x48, 0xc7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x00,       // mov qword [rsp + 8], 0
-                                          0x48, 0x8d, 0x74, 0x24, 0x08,                               // lea rsi, [rsp + 8]
-                                          0x48, 0xbf, 0x6c, 0x43, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rdi, SCAN
-                                          0xb8, 0x00, 0x00, 0x00, 0x00,                               // mov rax, 0
-                                          0xe8 };                                                     // call scanf
-            myFwrite( bufNumOpers1, sizeof( u_int8_t ), 34, code );
-            numBytesInFile += 34;
+            u_int8_t bufNumOpers1[20] = { 0x48, 0x83, 0xec, 0x18,                               // sub rsp, 24
+                                          0x48, 0xc7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x00, // mov qword [rsp + 8], 0
+                                          0x48, 0x8d, 0x74, 0x24, 0x08,                         // lea rsi, [rsp + 8]
+                                          0x48, 0xbf };                                         // mov rdi, SCAN
+            myFwrite( bufNumOpers1, sizeof( u_int8_t ), 20, code );
+            numBytesInFile += 20;
 
-            u_int16_t curAddressScanf = START_ADDRESS_SCANF - numBytesInFile;
-            myFwrite( &curAddressScanf, sizeof( u_int16_t ), 1, code );                               // call address ( 0xXX 0xXX ____ ____ )
+            myFwrite( &ADDRESS_DATA_SCANF, sizeof( u_int64_t ), 1, code );
+            numBytesInFile += 8;
+
+            u_int8_t bufNumOpers2[6] = { 0xb8, 0x00, 0x00, 0x00, 0x00, // mov rax, 0
+                                         0xe8 };                       // call scanf
+            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 6, code );
+            numBytesInFile += 6;
+
+            u_int16_t curAddressScanf = START_ADDRESS_FUNC_SCANF - numBytesInFile;
+            myFwrite( &curAddressScanf, sizeof( u_int16_t ), 1, code ); // call address ( 0xXX 0xXX ____ ____ )
             numBytesInFile += 2;
 
-            u_int8_t bufNumOpers2[22] = { 0xff, 0xff,                                                 // call address ( ____ ____ 0xXX 0xXX )
-                                          0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rsi, BUFFER
-                                          0x48, 0x8b, 0x44, 0x24, 0x08,                               // mov rax, qword [rsp + 8]
-                                          0x48, 0x83, 0xc4, 0x18,                                     // add rsp, 24
-                                          0x50 };                                                     // push rax
-            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 22, code );
-            numBytesInFile += 22;
+            u_int8_t bufNumOpers3[4] = { 0xff, 0xff,   // call address ( ____ ____ 0xXX 0xXX )
+                                         0x48, 0xbe }; // mov rsi, BUFFER
+            myFwrite( bufNumOpers3, sizeof( u_int8_t ), 4, code );
+            numBytesInFile += 4;
+
+            myFwrite( &ADDRESS_DATA_BUFFER, sizeof( u_int64_t ), 1, code );
+            numBytesInFile += 8;
+
+            u_int8_t bufNumOpers4[10] = { 0x48, 0x8b, 0x44, 0x24, 0x08, // mov rax, qword [rsp + 8]
+                                          0x48, 0x83, 0xc4, 0x18,       // add rsp, 24
+                                          0x50 };                       // push rax
+            myFwrite( bufNumOpers4, sizeof( u_int8_t ), 10, code );
+            numBytesInFile += 10;
         }
         else if (node->leftChild->nodeType == PRINT)    
         {
-            u_int8_t bufNumOpers1[10] = { 0x48, 0xbf, 0x68, 0x43, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00 }; // mov rdi, PRINT
-            myFwrite( bufNumOpers1, sizeof( u_int8_t ), 10, code );
-            numBytesInFile += 10;
+            u_int8_t bufNumOpers1[2] = { 0x48, 0xbf }; // mov rdi, PRINT
+            myFwrite( bufNumOpers1, sizeof( u_int8_t ), 2, code );
+            numBytesInFile += 2;
             
+            myFwrite( &ADDRESS_DATA_PRINTF, sizeof( u_int64_t ), 1, code );
+            numBytesInFile += 8;
+
             ConvertSubtreeInCode( node->rightChild, code, localNames );
             
             u_int8_t bufNumOpers2[10] = { 0x58,                         // pop rax
@@ -380,14 +400,17 @@ static void ConvertCallNodeInCode( Node_t *node, FILE *code, TableLocalNames *lo
             myFwrite( bufNumOpers2, sizeof( u_int8_t ), 10, code );
             numBytesInFile += 10;
 
-            u_int16_t curAddressPrintf = START_ADDRESS_PRINTF - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )
+            u_int16_t curAddressPrintf = START_ADDRESS_FUNC_PRINTF - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )
             myFwrite( &curAddressPrintf, sizeof( u_int16_t ), 1, code );
             numBytesInFile += 2;
 
-            u_int8_t bufNumOpers3[12] = { 0xff, 0xff,                                                   // call address ( ____ ____ 0xXX 0xXX )
-                                          0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00 }; // mov rsi, BUFFER
-            myFwrite( bufNumOpers3, sizeof( u_int8_t ), 12, code );
-            numBytesInFile += 12;
+            u_int8_t bufNumOpers3[4] = { 0xff, 0xff,   // call address ( ____ ____ 0xXX 0xXX )
+                                          0x48, 0xbe }; // mov rsi, BUFFER
+            myFwrite( bufNumOpers3, sizeof( u_int8_t ), 4, code );
+            numBytesInFile += 4;
+
+            myFwrite( &ADDRESS_DATA_BUFFER, sizeof( u_int64_t ), 1, code );
+            numBytesInFile += 8;
         }
         else
         {
@@ -399,7 +422,7 @@ static void ConvertCallNodeInCode( Node_t *node, FILE *code, TableLocalNames *lo
             myFwrite( bufNumOpers1, sizeof( u_int8_t ), 6, code );
             numBytesInFile += 6;
 
-            u_int16_t curAddressSqrt = START_ADDRESS_SQRT - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )
+            u_int16_t curAddressSqrt = START_ADDRESS_FUNC_SQRT - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )
             myFwrite( &curAddressSqrt, sizeof( u_int16_t ), 1, code );
             numBytesInFile += 2;
 
@@ -547,11 +570,11 @@ static void ConvertAssignNodeInCode( Node_t *node, FILE *code, TableLocalNames *
 
         u_int8_t bufNumOpers[5] = { 0x58,                         // pop rax
                                     0x4a, 0x89, 0x84, 0xf6 };     // mov [rsi + (r14 + x + y) * 8], rax
-                                                                  //                 |___________|
-        myFwrite( bufNumOpers, sizeof( u_int8_t ), 5, code  );    //                       |
+                                                                  //                 |           |
+        myFwrite( bufNumOpers, sizeof( u_int8_t ), 5, code  );    //                 +-----+-----+
         numBytesInFile += 5;                                      //                       |
                                                                   //                       |
-        int32_t regVal = ( globalNames.curName + curOffset ) * 8; //<----------------------| 
+        int32_t regVal = ( globalNames.curName + curOffset ) * 8; //<----------------------+
         myFwrite( &regVal, sizeof( int32_t ), 1, code );          // r14 - counter of local variables in the function 
         numBytesInFile += 4;                                      // x - number of global variables
                                                                   // y - number of local variables
@@ -565,7 +588,7 @@ static void ConvertAssignNodeInCode( Node_t *node, FILE *code, TableLocalNames *
         myFwrite( bufNumOpers, sizeof( u_int8_t ), 4, code  );  //          |______|
         numBytesInFile += 4;                                    //              |
                                                                 //              |
-        int32_t regVal = curOffset * 8;                         //<-------------|
+        int32_t regVal = curOffset * 8;                         //<------------/
         myFwrite( &regVal, sizeof( int32_t ), 1, code );        // x - number of global variables
         numBytesInFile += 4;
     }
@@ -696,16 +719,23 @@ static void ConvertBinaryOperationNodeInCode( Node_t *node, FILE *code, TableLoc
             myFwrite( bufNumOpers1, sizeof( u_int8_t ), 11, code );                                                                         
             numBytesInFile += 11;                                                                                                         
                                                                                                                                       
-            u_int16_t curAddressPow = START_ADDRESS_POW - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )                                                         
+            u_int16_t curAddressPow = START_ADDRESS_FUNC_POW - numBytesInFile; // call address ( 0xXX 0xXX ____ ____ )                                                         
             myFwrite( &curAddressPow, sizeof( u_int16_t ), 1, code );                                                                       
             numBytesInFile += 2;                                                                                                          
                                                                                                                                       
-            u_int8_t bufNumOpers2[17] = { 0xff, 0xff,                                                 // call address ( ____ ____ 0xXX 0xXX )
-                                          0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rsi, BUFFER
-                                          0xf2, 0x0f, 0x2c, 0xc0,                                     // cvttsd2si eax, xmm0
-                                          0x50 };                                                     // push rax                                 
-            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 17, code );                               
-            numBytesInFile += 17;                                                                                                         
+            u_int8_t bufNumOpers2[4] = { 0xff, 0xff,    // call address ( ____ ____ 0xXX 0xXX )
+                                          0x48, 0xbe }; // mov rsi, BUFFER
+            myFwrite( bufNumOpers2, sizeof( u_int8_t ), 4, code );                               
+            numBytesInFile += 4;
+
+            myFwrite( &ADDRESS_DATA_BUFFER, sizeof( u_int64_t ), 1, code );
+            numBytesInFile += 8;
+
+            u_int8_t bufNumOpers3[5] = { 0xf2, 0x0f, 0x2c, 0xc0, // cvttsd2si eax, xmm0
+                                          0x50 };                // push rax                                 
+            myFwrite( bufNumOpers3, sizeof( u_int8_t ), 5, code );                               
+            numBytesInFile += 5;
+
             break;
         }
         case (int32_t)JG:  { CND_JMP( 0x8f ); }
@@ -752,7 +782,7 @@ static void ConvertSubtreeInCode( Node_t *node, FILE *code, TableLocalNames *loc
     if ( node->rightChild != nullptr ) { ConvertSubtreeInCode( node->rightChild, code, localNames ); }
 }
 
-void ClearCodeFile( FILE* code )
+static void ClearCodeFile( FILE *code )
 {
     assert( code != nullptr );
 
@@ -762,10 +792,25 @@ void ClearCodeFile( FILE* code )
     }
 
     u_int8_t nopOper = 0x90;
+    printf( "%u\n", NUMBERS_NOP );
     for ( size_t i = 0; i < NUMBERS_NOP; i++ )
     {
         myFwrite( &nopOper, sizeof( u_int8_t ), 1, code );
     }
+}
+
+static void ResizeUpCodeFile( u_int32_t numberNopForResizeUp )
+{   
+    FILE *foutput = fopen( NAME_RESIZE_FILE, "a" );
+    if ( foutput == nullptr )
+    {
+        printf( "Error: can`t open code file for resize up!\n" );
+        return ;
+    }
+
+    fprintf( foutput, "\ntimes %u nop\n\n", numberNopForResizeUp );
+
+    fclose( foutput );
 }
 
 void GenerateAsmCode( Tree_t *tree )
@@ -774,13 +819,14 @@ void GenerateAsmCode( Tree_t *tree )
 
     for ( numTreeCrawl = 1; numTreeCrawl <= 2; numTreeCrawl++ )
     {
+        printf( "%u\n", numTreeCrawl );
         globalNames.curName = 0;
         curLabel            = 0;
         numBytesInFile      = 0;
 
         FILE *code = fopen( NAME_OUTPUT_FILE, "r+b" );
-        
-        if ( numTreeCrawl == 2 ) { ClearCodeFile( code ); }
+
+        if ( numTreeCrawl == 2 ) { printf( "OK2\n" ); ClearCodeFile( code ); }
 
         if ( fseek ( code, START_POSITION_IN_FILE, SEEK_SET ) )
         {
@@ -797,13 +843,19 @@ void GenerateAsmCode( Tree_t *tree )
         }
 
         // rsi - variables buffer
+        u_int8_t bufNumOpers1[2] = { 0x48, 0xbe }; // mov rsi, BUFFER
+        myFwrite( bufNumOpers1, sizeof( u_int8_t ), 2, code );
+        numBytesInFile += 2;
+
+        myFwrite( &ADDRESS_DATA_BUFFER, sizeof( u_int64_t ), 1, code );
+        numBytesInFile += 8;
+
         // r14 - counter of local variables in the function
         // r15 - global variable counter for this function
-        u_int8_t bufNumOpers[16] = { 0x48, 0xbe, 0x48, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rsi, BUFFER
-                                     0x4d, 0x31, 0xf6,                                           // xor r14, r14
-                                     0x4d, 0x31, 0xff };                                         // xor r15, r15
-        myFwrite( &bufNumOpers, sizeof( u_int8_t ), 16, code );
-        numBytesInFile += 16;
+        u_int8_t bufNumOpers2[6] = { 0x4d, 0x31, 0xf6,   // xor r14, r14
+                                     0x4d, 0x31, 0xff }; // xor r15, r15
+        myFwrite( bufNumOpers2, sizeof( u_int8_t ), 6, code );
+        numBytesInFile += 6;
 
         FillTableFunctions   ( tree->root );
         FindAndPrintGlobalVar( tree, code );
@@ -813,11 +865,13 @@ void GenerateAsmCode( Tree_t *tree )
         ConvertSubtreeInCode( tree->root, code, &localNames );
 
         if ( numBytesInFile > NUMBERS_NOP )
-        {
-            printf( "Error: the program has a size larger than the allowed one!\n" );
+        {   printf( "OK1\n" );
+            ResizeUpCodeFile( numBytesInFile - NUMBERS_NOP );
             
-            fclose( code );
-            return ;
+            NUMBERS_NOP = numBytesInFile;
+            printf( "%u\n", NUMBERS_NOP );
+
+            system( "make -C asmTests/" );
         }
 
         fclose( code );
