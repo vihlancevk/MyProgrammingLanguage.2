@@ -6,9 +6,10 @@
 
 const char     *NAME_OUTPUT_FILE          = "res/prog";
 const char     *NAME_RESIZE_FILE          = "asmTests/prog.asm";
+const char     *NAME_PROTOTYPE_FILE       = "asmTests/progPrototype.asm";
+const u_int32_t PROTOTYPE_FILE_SIZE       = 6447;
 const u_int32_t START_POSITION_IN_FILE    = 4448;
       u_int32_t NUMBERS_NOP               = 3344;
-const u_int32_t NUMBERS_NOP_FOR_RESIZE_IP = 1000;
       u_int64_t ADDRESS_DATA_BUFFER       = 0x404048;
       u_int64_t ADDRESS_DATA_PRINTF       = 0x404368;
       u_int64_t ADDRESS_DATA_SCANF        = 0x40436c;
@@ -18,6 +19,7 @@ const u_int16_t START_ADDRESS_FUNC_POW    = 0xfecc;
 const u_int16_t START_ADDRESS_FUNC_SQRT   = 0xfefc;
 const int32_t   NO_VARIABLE_IN_TABLE_NAME = -1;
 const int32_t   NO_FUNCTION_IN_TABLE_NAME = -1;
+
 
 TableGlobalNames globalNames = { {}, 0 };
 TableFunctions   functions   = {};
@@ -792,7 +794,6 @@ static void ClearCodeFile( FILE *code )
     }
 
     u_int8_t nopOper = 0x90;
-    printf( "%u\n", NUMBERS_NOP );
     for ( size_t i = 0; i < NUMBERS_NOP; i++ )
     {
         myFwrite( &nopOper, sizeof( u_int8_t ), 1, code );
@@ -801,32 +802,65 @@ static void ClearCodeFile( FILE *code )
 
 static void ResizeUpCodeFile( u_int32_t numberNopForResizeUp )
 {   
-    FILE *foutput = fopen( NAME_RESIZE_FILE, "a" );
-    if ( foutput == nullptr )
+    FILE *finput = fopen( NAME_RESIZE_FILE, "a" );
+    if ( finput == nullptr )
     {
         printf( "Error: can`t open code file for resize up!\n" );
         return ;
     }
 
-    fprintf( foutput, "\ntimes %u nop\n\n", numberNopForResizeUp );
+    fprintf( finput, "\ntimes %u nop\n\n", numberNopForResizeUp );
 
+    fclose( finput );
+}
+
+static void RecoverCodeFile()
+{
+    FILE *finput = fopen( NAME_PROTOTYPE_FILE, "r" );
+    if ( finput == nullptr )
+    {
+        printf( "Error: can`t open prototype code file!\n" );
+        return ;
+    }
+
+    FILE *foutput = fopen( NAME_RESIZE_FILE, "w" );
+    if ( foutput == nullptr )
+    {
+        printf( "Error: can`t open code file for recover!\n" );
+        return ;
+    }
+
+    char *str = (char*)calloc( PROTOTYPE_FILE_SIZE, sizeof( char ) );
+    if ( str == nullptr )
+    {
+        printf( "Error: can`t failed to allocate memory!\n" );
+        return ;
+    }
+
+    fread(  str, sizeof( char ), PROTOTYPE_FILE_SIZE, finput );
+    fwrite( str, sizeof( char ), PROTOTYPE_FILE_SIZE, foutput );
+
+    free( str );
+    
     fclose( foutput );
+    fclose( finput  );
 }
 
 void GenerateAsmCode( Tree_t *tree )
 {
     assert( tree != nullptr );
 
+    RecoverCodeFile();
+
     for ( numTreeCrawl = 1; numTreeCrawl <= 2; numTreeCrawl++ )
     {
-        printf( "%u\n", numTreeCrawl );
         globalNames.curName = 0;
         curLabel            = 0;
         numBytesInFile      = 0;
 
         FILE *code = fopen( NAME_OUTPUT_FILE, "r+b" );
 
-        if ( numTreeCrawl == 2 ) { printf( "OK2\n" ); ClearCodeFile( code ); }
+        if ( numTreeCrawl == 2 ) { ClearCodeFile( code ); }
 
         if ( fseek ( code, START_POSITION_IN_FILE, SEEK_SET ) )
         {
@@ -865,11 +899,10 @@ void GenerateAsmCode( Tree_t *tree )
         ConvertSubtreeInCode( tree->root, code, &localNames );
 
         if ( numBytesInFile > NUMBERS_NOP )
-        {   printf( "OK1\n" );
+        {   
             ResizeUpCodeFile( numBytesInFile - NUMBERS_NOP );
             
-            NUMBERS_NOP = numBytesInFile;
-            printf( "%u\n", NUMBERS_NOP );
+            NUMBERS_NOP    = numBytesInFile;
 
             system( "make -C asmTests/" );
         }
