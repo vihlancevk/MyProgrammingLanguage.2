@@ -1,10 +1,16 @@
 main()
 {
-    n = scan();
+    n = 10;
+    i = 2000000;
+    N = 0;
     
-    n = fac(n);
+    while(i > 0)
+    {
+        N = fac(n);
+        i = i - 1;
+    }
     
-    print(n);
+    print(N);
     
     return 0;
 }

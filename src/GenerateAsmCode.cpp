@@ -5,8 +5,8 @@
 #include "../include/DSL.h"
 
 const char     *NAME_OUTPUT_FILE          = "res/prog";
-const char     *NAME_RESIZE_FILE          = "asmTests/prog.asm";
-const char     *NAME_PROTOTYPE_FILE       = "asmTests/progPrototype.asm";
+const char     *NAME_RESIZE_FILE          = "resizeProg/prog.asm";
+const char     *NAME_PROTOTYPE_FILE       = "resizeProg/progPrototype.asm";
 const u_int32_t PROTOTYPE_FILE_SIZE       = 6447;
 const u_int32_t START_POSITION_IN_FILE    = 4448;
       u_int32_t NUMBERS_NOP               = 3344;
@@ -904,7 +904,7 @@ void GenerateAsmCode( Tree_t *tree )
             
             NUMBERS_NOP    = numBytesInFile;
 
-            system( "make -C asmTests/" );
+            system( "make -C resizeProg/" );
         }
 
         fclose( code );

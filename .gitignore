@@ -1,4 +1,5 @@
-asmTests/
+resizeProg/prog.o
+resizeProg/prog
 res/graphiz.gv
 res/graphiz.png
 src/log
